@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>ResolveSistema</title>
+        <style>
+            button, p{
+                font-size: 20px;
+            }
+            input {
+                font-size: 16px;
+            }
+            button {
+                padding: 3px 10px 3px 10px;
+            }
+        </style>
+        <script>
+            var mat_order = 3;
+            function number_only_validator(event) {
+                return "0123456789.+-eE".includes(event.key);
+            }
+            function make_mats() {
+                //coeficients' matrix
+                {
+                    let mat = document.getElementById("mat_coefs");
+                    mat.style.gridTemplateColumns = "";
+                    for (let i = 0; i < mat_order; i++) {
+                        mat.style.gridTemplateColumns += " 1fr"
+                    }
+                    mat.style.gridTemplateColumns += ";";
+
+                    let inputs = new Array(mat_order * mat_order);
+
+                    for (let i = 0; i < mat_order; i++) {
+                        for (let j = 0; j < mat_order; j++) {
+                            let input = inputs[i * mat_order + j] = document.createElement("input");
+                            input.style.width = "70px";
+                            input.type = "text";
+                            input.onkeypress = number_only_validator;
+                            input.placeholder = "0";
+                            input.style.textAlign = "right";
+                        }
+                    }
+                    mat.replaceChildren(...inputs);
+                }
+                //variables' matrix
+                {
+                    let mat = document.getElementById("mat_vars");
+
+                    let inputs = new Array(mat_order);
+
+                    for (let i = 0; i < mat_order; i++) {
+                        let input = inputs[i] = document.createElement("input");
+                        input.style.width = "70px";
+                        input.style.flex = "1";
+                        input.type = "text";
+                        input.placeholder = "x" + i;
+                        input.style.textAlign = "right";
+                    }
+                    mat.replaceChildren(...inputs);
+                }
+                //constants' matrix
+                {
+                    let mat = document.getElementById("mat_consts");
+
+                    let inputs = new Array(mat_order);
+
+                    for (let i = 0; i < mat_order; i++) {
+                        let input = inputs[i] = document.createElement("input");
+                        input.style.width = "70px";
+                        input.style.flex = "1";
+                        input.type = "text";
+                        input.onkeypress = number_only_validator;
+                        input.placeholder = "0";
+                        input.style.textAlign = "right";
+                    }
+                    mat.replaceChildren(...inputs);
+                }
+            }
+            function btn_add() {
+                mat_order++;
+                make_mats();
+            }
+            function btn_rem() {
+                if (mat_order > 1) {
+                    mat_order--;
+                    make_mats();
+                }
+            }
+            function btn_clr() {
+                function clear_fields(fields) {
+                    for (let i = 0; i < fields.length; i++) {
+                        fields[i].value = "";
+                    }
+                }
+                clear_fields(document.getElementById("mat_coefs").children);
+                clear_fields(document.getElementById("mat_vars").children);
+                clear_fields(document.getElementById("mat_consts").children);
+            }
+            function btn_solve() {
+                function sub(mat, I, J) {
+                    let sub_mat = [];
+                    for (let i = 0; i < mat.length; i++) {
+                        if (i != I) {
+                            let row = [];
+                            for (let j = 0; j < mat[0].length; j++) {
+                                if (j != J) {
+                                    row.push(mat[i][j]);
+                                }
+                            }
+                            sub_mat.push(row);
+                        }
+                    }
+                    return sub_mat;
+                }
+                function det(mat) {
+                    switch (mat.length) {
+                        case 0:
+                            return 0;
+                            break;
+                        case 1:
+                            return mat[0][0];
+                            break;
+                        case 2:
+                            return mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0];
+                            break;
+                        case 3:
+                            return mat[0][0] * mat[1][1] * mat[2][2]
+                                + mat[0][1] * mat[1][2] * mat[2][0]
+                                + mat[0][2] * mat[1][0] * mat[2][1]
+                                - mat[0][2] * mat[1][1] * mat[2][0]
+                                - mat[0][1] * mat[1][0] * mat[2][2]
+                                - mat[0][0] * mat[1][2] * mat[2][1];
+                            break;
+                        default:
+                            let d = 0;
+                            for (let j = 0; j < mat.length; j++) {
+                                d += (((j + 1) % 2) * 2 - 1) * mat[0][j] * det(sub(mat, 0, j));
+                            }
+                            return d;
+                            break;
+                    }
+                }
+
+                let mat_coefs = [];
+                let input = document.getElementById("mat_coefs").children;
+                for (let i = 0; i < mat_order; i++) {
+                    let row = [];
+                    for (let j = 0; j < mat_order; j++) {
+                        row.push(Number(input[i * mat_order + j].value));
+                    }
+                    mat_coefs.push(row);
+                }
+
+                let d = det(mat_coefs);
+                if (d != 0) {
+                    input = document.getElementById("mat_consts").children;
+                    let mat_consts = [];
+                    for (let i = 0; i < mat_order; i++) {
+                        mat_consts.push(Number(input[i].value));
+                    }
+                    //calculate and print solutions
+                    const mat_vars = document.getElementById("mat_vars").children;
+                    let output = document.getElementById("solution");
+                    output.innerText = "";
+                    for (let j = 0; j < mat_order; j++) {
+                        let mat_j = [];
+                        for (let _i = 0; _i < mat_order; _i++) {
+                            let row = [];
+                            for (let _j = 0; _j < mat_order; _j++) {
+                                if (_j == j) {
+                                    row.push(mat_consts[_i]);
+                                }
+                                else {
+                                    row.push(mat_coefs[_i][_j]);
+                                }
+                            }
+                            mat_j.push(row);
+                        }
+                        let name = mat_vars[j].value.slice();
+                        if (name == "")
+                            name = "x" + j;
+                        output.innerText += name + " = " + det(mat_j) / d + "\n";
+                    }
+                }
+                else {
+                    document.getElementById("solution").innerText = "Sistema indeterminado.";
+                }
+
+            }
+        </script>
+    </head>
+    <body style="margin-left:20px;">
+        <h1 style="margin-bottom: 3px;">ResolveSistema</h1>
+        <div style="height: 2px; background-color:black; margin-bottom: 17px;"></div>
+        <div style="display:flex; flex-direction:row;">
+            <div style="display:flex; flex-direction:column;">
+                <div style="margin-bottom:10px; display:flex; flex-direction:row; column-gap:5px;">
+                    <button onclick="btn_solve()" style="flex:1;">Resolver</button>
+                    <button onclick="btn_add()" style="flex:1;">+</button>
+                    <button onclick="btn_rem()" style="flex:1;">-</button>
+                    <button onclick="btn_clr()" style="flex:1;">Limpar</button>
+                </div>
+                <div style="display:flex;">
+                    <div style="
+                            display:grid;
+                            column-gap:5px;
+                            row-gap:5px;
+                        "
+                         id="mat_coefs">
+                    </div>
+                    <div>
+                        <div style="margin-left: 8px; margin-right: 8px; position: relative; top: 50%; transform: translate(0,-35%); font-size: 26px; font-weight: 700;">
+                            *
+                        </div>
+                    </div>
+                    <div style="
+                            display:flex;
+                            flex-direction:column;
+                            row-gap:5px;
+                        "
+                         id="mat_vars">
+                    </div>
+                    <div>
+                        <div style="margin-left:8px;margin-right:8px; position:relative;top:50%;transform: translate(0,-50%); font-size:26px; font-weight:900;">
+                            =
+                        </div>
+                    </div>
+                    <div style="
+                            display:flex;
+                            flex-direction:column;
+                            row-gap:5px;
+                        "
+                         id="mat_consts">
+                    </div>
+                    <script>
+                        make_mats();
+                    </script>
+                </div>
+            </div>
+        </div>
+        <p id="solution" style="font-size:20px; "></p>
+    </body>
+</html>
